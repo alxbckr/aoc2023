@@ -55,20 +55,17 @@ fn num_steps(first: usize, nodes: &Vec<Node>, instr: &str) -> u32{
 
 fn part_1(filename: &str) {
     let (instr,nodes) = parse(filename, false);
-    let mut curr = nodes.iter().position(|x| x.first).unwrap();    
+    let curr = nodes.iter().position(|x| x.first).unwrap();    
     println!("Answer for part 1: {}",num_steps(curr as usize, &nodes, &instr));
 }
 
 fn part_2(filename: &str) {
     let (instr,nodes) = parse(filename, true);
-
-    let mut steps: u64 = 0;
-    let mut found = false;
-    let mut first: Vec<u32> = nodes.iter()
-                                .enumerate()
-                                .filter(|(_,x)| x.first )
-                                .map(|(i,_)| i as u32 )
-                                .collect();
+    let first: Vec<u32> = nodes.iter()
+                            .enumerate()
+                            .filter(|(_,x)| x.first )
+                            .map(|(i,_)| i as u32 )
+                            .collect();
     let steps: Vec<u32> = first.iter().map(|x| num_steps(*x as usize, &nodes, &instr)).collect();
     let m: u64 = steps.iter().fold(1, |a,x| lcm(a,*x as u64));
     println!("Answer for part 2: {}",m);
