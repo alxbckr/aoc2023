@@ -1,4 +1,7 @@
 {
     "rust-analyzer.inlayHints.typeHints.enable": false,
-    "rust-analyzer.inlayHints.parameterHints.enable": false
+    "rust-analyzer.inlayHints.parameterHints.enable": false,
+    "rust-analyzer.linkedProjects": [
+        "./day10/Cargo.toml"
+    ]
 }
