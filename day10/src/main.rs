@@ -149,19 +149,13 @@ fn part_2(filename: &str) {
     for (y,line) in field.iter().enumerate() {        
         let mut pl: Vec<Coord> = path.iter().filter(|p| p.y == y).map(|e| Coord{x: e.x, y: e.y}).collect();
         pl.sort_by(|a,b| a.x.partial_cmp(&b.x).unwrap());
-        let mut cnt: f32 = 0.0;
+        let mut inside = false;
         for (x,c) in line.iter().enumerate() {
             if pl.iter().any(|e| e.x == x && e.y == y) {
-                if *c == 'S' {
-                    cnt += 1.0;
-                } else if *c == '|' {
-                    cnt += 1.0;
-                } else if *c == '7' || *c == 'L' {
-                    cnt += 0.5;
-                } else if *c == 'F' || *c == 'J' {
-                    cnt -= 0.5;
+                if *c == 'S' || *c == '|' || *c == 'L' || *c == 'J' {
+                    inside = !inside;
                 } 
-            } else  if cnt % 2.0 != 0.0 {
+            } else if inside {
                     el_in.push(Coord { x: x, y: y });
                     println!("Inside {} {}", x, y);
                 }
