@@ -82,10 +82,27 @@ fn part_1(filename: &str) {
 }
 
 fn part_2(filename: &str) {
-    println!("Answer for part 2: {}",0);
+    let mut sum = 0;
+    let (lines, g) = parse(filename);    
+    for (i,line) in lines.iter().enumerate() {
+        let mut nl: Vec<char> = vec![];
+        let mut ng: Vec<u32> = vec![];
+        for i in 0..5 {
+            nl.append(&mut line.clone());
+            ng.append(&mut g[i].clone());            
+        }
+        let perms = generate_perm(&nl);
+        for p in perms{
+            if validate(&p, &ng) {
+                sum += 1;
+                //println!("{:?} {:?}",&p, g[i]);
+            }
+        }
+    }
+    println!("Answer for part 2: {}",sum);
 }
 
 fn main() {
-    part_1("puzzle_input.txt");
+    part_1("puzzle_sample.txt");
     part_2("puzzle_sample.txt");
 }
