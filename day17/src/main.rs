@@ -6,55 +6,103 @@ use std::collections::HashMap;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 enum Direction {
     North,
-    East,
     South,
+    East,
     West,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-struct State {
-    cost: usize,
+impl Direction {
+    // Return the opposite direction.
+    fn opposite(&self) -> Self {
+        match self {
+            Self::North => Self::South,
+            Self::South => Self::North,
+            Self::East => Self::West,
+            Self::West => Self::East,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+struct Point {
     x: usize,
     y: usize,
+}
+
+impl  Point {
+    fn new(x: usize, y: usize) -> Self {
+        Self { x, y }
+    }
+
+    fn valid_next(&self, grid: &[Vec<usize>]) -> Vec<(Direction, Point)> {
+        let mut next = Vec::new();
+        if self.x > 0 {
+            next.push((Direction::West, Self::new(self.x - 1, self.y)));
+        }
+        if self.y > 0 {
+            next.push((Direction::North, Self::new(self.x, self.y - 1)));
+        }
+        if self.x < grid[0].len() - 1 {
+            next.push((Direction::East, Self::new(self.x + 1, self.y)));
+        }
+        if self.y < grid.len() - 1 {
+            next.push((Direction::South, Self::new(self.x, self.y + 1)));
+        }
+        next
+    }      
+}    
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct State {
+    cost: usize,
+    node: Node,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+struct Node{
+    pos: Point,
     dir: Direction,
     dir_count: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-struct Point{
-    x: usize,
-    y: usize,
-    dir: Direction
-}
-
-impl Point {
-    fn new(x: usize, y: usize, dir: Direction) -> Self {
-        Self { x, y, dir }
+impl Node {
+    fn new(pos: Point, dir: Direction, dir_count: usize) -> Self {
+        Self { pos, dir, dir_count }
     }
 }
 
 // The priority queue depends on `Ord`.
 impl Ord for State {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.cost.cmp(&self.cost)
-            .then_with(|| self.x.cmp(&other.x))
-            .then_with(|| self.y.cmp(&other.y))
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // We are using a min heap, so we are doing this backwards.
+        other
+            .cost
+            .cmp(&self.cost)
+            .then_with(|| self.node.cmp(&other.node))
     }
 }
-fn draw_path(map: &Vec<Vec<usize>>, prev: &Vec<Vec<(usize,usize)>>,
-                xs: usize, ys: usize, xe: usize, ye: usize){
-    let mut x = xe;
-    let mut y = ye;
-    let mut path: Vec<(usize,usize)> = vec![];
-    while x != xs || y != ys {
-        path.push((x,y));
-        (x,y) = prev[y][x];
+
+// `PartialOrd` needs to be implemented as well.
+impl PartialOrd for State {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+fn draw_path(map: &Vec<Vec<usize>>, prev: &HashMap<Node,Node>,
+                start: &Point, end: &Point){
+    let mut path: Vec<Point> = vec![];
+    let mut p = prev.iter().find(|(k,_)| k.pos == *end ).unwrap().0;
+    while p.pos != *start {
+        path.push(p.pos.clone());
+        p = prev.get(p).unwrap();
     }
 
     for y in 0..map.len(){
         let mut s: String = String::new();
         for x in 0..map[0].len(){
-            if path.iter().any(|(xp,yp)| *xp == x && *yp == y) {
+            if path.iter().any(|p| p.x == x && p.y == y) {
                 s.push('#');
             } else {
                 s.push(char::from_digit(map[y][x] as u32,10).unwrap());
@@ -64,80 +112,54 @@ fn draw_path(map: &Vec<Vec<usize>>, prev: &Vec<Vec<(usize,usize)>>,
     }
 }
 
-fn next_points(map: &Vec<Vec<usize>>, x: usize, y: usize) -> Vec<Point> {
+fn next_nodes(map: &Vec<Vec<usize>>, node: &Node) -> Vec<Node> {
     let mut next = Vec::new();
-    if y > 0 {
-        next.push(Point::new(x, y-1, Direction::North));
-    }
-    if x > 0 {
-        next.push(Point::new(x-1, y, Direction::West));
-    }    
-    if y < map.len()-1 {
-        next.push(Point::new(x, y+1, Direction::South));
-    }
-    if x < map[0].len()-1 {
-        next.push(Point::new(x+1, y, Direction::East));
+    for (d,p) in node.pos.valid_next(map) {
+        if d == node.dir.opposite() { continue; }
+        if d != node.dir {
+            next.push(Node::new(p, d,0));
+        } else if node.dir_count < 3 {
+            next.push(Node::new(p, d, node.dir_count + 1));
+        }
     }
     next
 }
 
-fn dijkstra(map: &Vec<Vec<usize>>, xs: usize, ys: usize, xe: usize, ye: usize) -> usize {
+fn dijkstra(map: &Vec<Vec<usize>>, start: &Point, end: &Point) -> usize {
     // distance from start to node
-    let mut prev: Vec<Vec<(usize,usize)>> = vec![];
-    for _ in 0..map.len() {
-        prev.push((0..map[0].len()).map(|_| (0,0)).collect());
-    }
-
+    let mut prev = HashMap::new();
     let mut distances = HashMap::new();
-    distances.insert(Point::new(xs, ys, Direction::South), 0);
-    distances.insert(Point::new(xs, ys, Direction::East), 0);
+    distances.insert(Node::new(start.clone(),Direction::South,0), 0);
+    distances.insert(Node::new(start.clone(), Direction::East,0), 0);
 
-    let mut heap: BinaryHeap<State> = BinaryHeap::new();
-    heap.push(State{ cost: map[ys][xs], x: xs, y: ys, dir: Direction::East, dir_count: 0});
-    heap.push(State{ cost: map[ys][xs], x: xs, y: ys, dir: Direction::North, dir_count: 0});
+    let mut heap = BinaryHeap::new();
+    heap.push(State{ cost: map[start.y][start.x], node: Node::new(start.clone(), Direction::South,0)});
+    heap.push(State{ cost: map[start.y][start.x], node: Node::new(start.clone(), Direction::East,0)});
 
-    while let Some(State { cost, x, y, dir, dir_count }) = heap.pop() {
+    while let Some(State { cost, node}) = heap.pop() {
         // found
-        if x == xe && y == ye { 
-            // draw_path(map, &prev, xs, ys, xe, ye);
+        if node.pos == *end { 
+            draw_path(map, &prev, start, end);
             return cost; 
         }
 
         // For each node we can reach, see if we can find a way with
         // a lower cost going through this node
-        for p in next_points(map, x, y) {
-            
-            let new_cost = cost + map[p.y][p.x];
+        for p in next_nodes(map, &node) {           
+            let new_cost = cost + map[p.pos.y][p.pos.x];
             if let Some(&best) = distances.get(&p) {
                 if new_cost >= best {
                     continue;
                 }
-            }
-
-            let mut new_dir_count = dir_count;
-            if p.dir == dir {
-                new_dir_count += 1;
-            } else {
-                new_dir_count = 0;
-            }
-            if new_dir_count > 3 { continue;}
-
-            let next = State{ cost: new_cost, x: p.x, y: p.y, dir: p.dir, dir_count: new_dir_count };
-            
-            heap.push(next);
+            } 
             distances.insert(p.clone(),new_cost);
-            prev[p.y][p.x] = (x,y);
+            heap.push(State{ cost: new_cost, node: p.clone() });
+            prev.insert(p, node.clone());
         }
     }   
     0
 }
 
-// `PartialOrd` needs to be implemented as well.
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
 
 fn read_file(filename: &str) -> Vec<String> {
     let contents = fs::read_to_string(filename)
@@ -156,7 +178,7 @@ fn parse(filename: &str) -> Vec<Vec<usize>> {
 
 fn part_1(filename: &str) {   
     let map = parse(filename);
-    let ans = dijkstra(&map, 0, 0, map[0].len()-1, map.len()-1);
+    let ans = dijkstra(&map, &Point::new(0, 0), &Point::new(map[0].len()-1, map.len()-1));
     println!("Answer for part 1: {}",ans);
 }
 
@@ -165,6 +187,6 @@ fn part_2(filename: &str) {
 }
 
 fn main() {
-    part_1("puzzle_sample.txt");
+    part_1("puzzle_input.txt");
     part_2("puzzle_sample.txt");
 }
