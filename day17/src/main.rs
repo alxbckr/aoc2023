@@ -117,7 +117,7 @@ fn next_nodes(map: &Vec<Vec<usize>>, node: &Node) -> Vec<Node> {
     for (d,p) in node.pos.valid_next(map) {
         if d == node.dir.opposite() { continue; }
         if d != node.dir {
-            next.push(Node::new(p, d,0));
+            next.push(Node::new(p, d,1));
         } else if node.dir_count < 3 {
             next.push(Node::new(p, d, node.dir_count + 1));
         }
@@ -133,8 +133,8 @@ fn dijkstra(map: &Vec<Vec<usize>>, start: &Point, end: &Point) -> usize {
     distances.insert(Node::new(start.clone(), Direction::East,0), 0);
 
     let mut heap = BinaryHeap::new();
-    heap.push(State{ cost: map[start.y][start.x], node: Node::new(start.clone(), Direction::South,0)});
-    heap.push(State{ cost: map[start.y][start.x], node: Node::new(start.clone(), Direction::East,0)});
+    heap.push(State{ cost: 0, node: Node::new(start.clone(), Direction::South,0)});
+    heap.push(State{ cost: 0, node: Node::new(start.clone(), Direction::East,0)});
 
     while let Some(State { cost, node}) = heap.pop() {
         // found
@@ -145,16 +145,16 @@ fn dijkstra(map: &Vec<Vec<usize>>, start: &Point, end: &Point) -> usize {
 
         // For each node we can reach, see if we can find a way with
         // a lower cost going through this node
-        for p in next_nodes(map, &node) {           
-            let new_cost = cost + map[p.pos.y][p.pos.x];
-            if let Some(&best) = distances.get(&p) {
+        for neighbor in next_nodes(map, &node) {           
+            let new_cost = cost + map[neighbor.pos.y][neighbor.pos.x];
+            if let Some(&best) = distances.get(&neighbor) {
                 if new_cost >= best {
                     continue;
                 }
             } 
-            distances.insert(p.clone(),new_cost);
-            heap.push(State{ cost: new_cost, node: p.clone() });
-            prev.insert(p, node.clone());
+            distances.insert(neighbor.clone(),new_cost);
+            heap.push(State{ cost: new_cost, node: neighbor.clone() });
+            prev.insert(neighbor.clone(), node.clone());
         }
     }   
     0
