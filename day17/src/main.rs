@@ -125,6 +125,19 @@ fn next_nodes(map: &Vec<Vec<usize>>, node: &Node) -> Vec<Node> {
     next
 }
 
+fn next_nodes2(map: &Vec<Vec<usize>>, node: &Node) -> Vec<Node> {
+    let mut next = Vec::new();
+    for (d,p) in node.pos.valid_next(map) {
+        if d == node.dir.opposite() { continue; }
+        if d != node.dir && node.dir_count >= 4 {
+            next.push(Node::new(p, d, 1));
+        } else if d == node.dir && node.dir_count < 10 {
+            next.push(Node::new(p, d, node.dir_count + 1));
+        }
+    }
+    next
+}
+
 fn dijkstra(map: &Vec<Vec<usize>>, start: &Point, end: &Point) -> usize {
     // distance from start to node
     let mut prev = HashMap::new();
@@ -160,6 +173,40 @@ fn dijkstra(map: &Vec<Vec<usize>>, start: &Point, end: &Point) -> usize {
     0
 }
 
+fn dijkstra2(map: &Vec<Vec<usize>>, start: &Point, end: &Point) -> usize {
+    // distance from start to node
+    let mut prev = HashMap::new();
+    let mut distances = HashMap::new();
+    distances.insert(Node::new(start.clone(),Direction::South,0), 0);
+    distances.insert(Node::new(start.clone(), Direction::East,0), 0);
+
+    let mut heap = BinaryHeap::new();
+    heap.push(State{ cost: 0, node: Node::new(start.clone(), Direction::South,0)});
+    heap.push(State{ cost: 0, node: Node::new(start.clone(), Direction::East,0)});
+
+    while let Some(State { cost, node}) = heap.pop() {
+        // found
+        if node.pos == *end { 
+            draw_path(map, &prev, start, end);
+            return cost; 
+        }
+
+        // For each node we can reach, see if we can find a way with
+        // a lower cost going through this node
+        for neighbor in next_nodes2(map, &node) {           
+            let new_cost = cost + map[neighbor.pos.y][neighbor.pos.x];
+            if let Some(&best) = distances.get(&neighbor) {
+                if new_cost >= best {
+                    continue;
+                }
+            } 
+            distances.insert(neighbor.clone(),new_cost);
+            heap.push(State{ cost: new_cost, node: neighbor.clone() });
+            prev.insert(neighbor.clone(), node.clone());
+        }
+    }   
+    0
+}
 
 fn read_file(filename: &str) -> Vec<String> {
     let contents = fs::read_to_string(filename)
@@ -183,10 +230,12 @@ fn part_1(filename: &str) {
 }
 
 fn part_2(filename: &str) {
-    println!("Answer for part 2: {}", 0);
+    let map = parse(filename);
+    let ans = dijkstra2(&map, &Point::new(0, 0), &Point::new(map[0].len()-1, map.len()-1));
+    println!("Answer for part 2: {}",ans);
 }
 
 fn main() {
     part_1("puzzle_input.txt");
-    part_2("puzzle_sample.txt");
+    part_2("puzzle_input.txt");
 }
