@@ -3,12 +3,13 @@ use std::fs;
 struct Instruction{
     dir : char,
     steps : isize,
-    color: String,
+    steps2: isize,
+    dir2: char,
 }
 
 impl Instruction{
-    fn new(dir: char, steps: isize, color: String) -> Self {
-        Self { dir, steps, color }
+    fn new(dir: char, steps: isize, steps2: isize, dir2: char) -> Self {
+        Self { dir, steps, steps2, dir2 }
     }
 }
 #[derive(Debug,Copy, Clone)]
@@ -33,9 +34,17 @@ fn parse(filename: &str) -> Vec<Instruction> {
     let mut res = Vec::new();
     for line in read_file(filename) {
         let parts: Vec<&str> = line.split_whitespace().collect();
+        let dir2 = match &parts[2][parts[2].len()-2..parts[2].len()-1]{
+            "0" => 'R',
+            "1" => 'D',
+            "2" => 'L',
+            "3" => 'U',
+            _ => '_'
+        };
+        let steps2 = isize::from_str_radix(&parts[2][2..parts[2].len()-2],16).unwrap();
         res.push(Instruction::new(parts[0].chars().last().unwrap(), 
                                     parts[1].parse().unwrap(), 
-                                    parts[2][1..parts[2].len()-1].to_string()))
+                                    steps2, dir2));
     }   
     res
 }
@@ -126,6 +135,36 @@ fn fill_cave(cave: &mut Vec<Vec<char>>, start: &Point ){
     }
 }
 
+fn get_points(instr: &Vec<Instruction>) -> Vec<Point> {
+    let mut res = Vec::new();
+    let mut p = Point::new(0, 0);
+    for i in instr {
+        match i.dir2 {
+            'R' => { p.x += i.steps2; }
+            'L' => { p.x -= i.steps2; }
+            'U' => { p.y -= i.steps2; }
+            'D' => {p.y += i.steps2; }
+            _ => ()            
+        }
+        res.push(p);
+    }      
+    res
+}
+
+fn shoelace(instr: &Vec<Instruction>) -> usize {
+    let points = get_points(instr);
+    let mut area : isize = 0;
+    let mut perimeter : isize = 0;
+    for (x,p) in points.iter().enumerate(){
+        if x == points.len()-1 { continue;}
+        area += p.x*points[x+1].y - p.y*points[x+1].x;
+        perimeter += ( p.x - points[x+1].x ).abs() + ( p.y - points[x+1].y ).abs();
+    }
+    area += points[points.len()-1].x*points[0].y - points[0].x*points[points.len()-1].y;
+    perimeter += (points[points.len()-1].x - points[0].x).abs() + (points[points.len()-1].y - points[0].y).abs();
+    ( ( ( area + perimeter ) / 2) ) as usize + 1
+}
+
 fn part_1(filename: &str) {   
     let instr = parse(filename);
     let (mut cave,start) = dig_cave(&instr);
@@ -141,12 +180,12 @@ fn part_1(filename: &str) {
 }
 
 fn part_2(filename: &str) {
-    let map = parse(filename);
-    let ans = 0;
+    let instr = parse(filename);
+    let ans = shoelace(&instr);
     println!("Answer for part 2: {}",ans);
 }
 
 fn main() {
     part_1("puzzle_input.txt");
-    part_2("puzzle_sample.txt");
+    part_2("puzzle_input.txt");
 }
