@@ -187,6 +187,7 @@ fn dijkstra2(map: &Vec<Vec<usize>>, start: &Point, end: &Point) -> usize {
     while let Some(State { cost, node}) = heap.pop() {
         // found
         if node.pos == *end { 
+            if node.dir_count < 4 { continue; }
             draw_path(map, &prev, start, end);
             return cost; 
         }

@@ -4,6 +4,7 @@
     "editor.inlayHints.enabled": "offUnlessPressed",
     "rust-analyzer.linkedProjects": [
         "./day10/Cargo.toml",
-        "./day18/Cargo.toml"
+        "./day18/Cargo.toml",
+        "./day19/Cargo.toml",
     ]
 }
